@@ -19,9 +19,9 @@ struct ChipDescription ROM = {
 		.ClockFreq = 4000000,			// 4MHz (test)
 		.WriteCycleTime = 1000,			// 1ms
 		.WritePulseTime = 1,			// 1us/1000ns
-		.OutputEnableTime = 1,			// 1us/100ns
-		.OutputDisableTime = 1,			// 1us/60ns
-		.AddressToDataValidTime = 1,	// 1us/250ns
+		.OutputEnableTime = 1000,			// 1us/100ns
+		.OutputDisableTime = 1000,			// 1us/60ns
+		.AddressToDataValidTime = 1000,	// 1us/250ns
 	}
 };
 
@@ -78,6 +78,25 @@ void Write( const uint8_t* Buffer, int Length ) {
 	Serial.println( "Done." );
 }
 
+void Dump( uint32_t Start, uint32_t End ) {
+	char Buffer[ 256 ];
+
+	snprintf( Buffer, sizeof( Buffer ), "Dump from 0x%04X to 0x%04X:\n", Start, End );
+	Serial.print( Buffer );
+
+	for ( ; Start <= End; Start++ ) {
+		if ( ( Start % 16 ) == 0 ) {
+			snprintf( Buffer, sizeof( Buffer ), "\n%04X: ", Start );
+			Serial.print( Buffer );
+		}
+
+		snprintf( Buffer, sizeof( Buffer ), "%02X ", Programmer->Read( Start ) );
+		Serial.print( Buffer );
+	}
+
+	Serial.println( );
+}
+
 void loop( void ) {
 	CRC32 Result;
 	int i = 0;
@@ -92,13 +111,15 @@ void loop( void ) {
 	Result.reset( );
 	
 	for ( i = 0; i < ROM.ChipSize; i++ ) {
-		Serial.write( Programmer->Read( i ) );
-		//Result.update( Programmer->Read( i ) );
+		//Serial.write( Programmer->Read( i ) );
+		Result.update( Programmer->Read( i ) );
 	}
 
-	//Serial.print( "ROM CRC32: 0x" );
-	//Serial.println( Result.finalize( ), 16 );
+	Serial.print( "ROM CRC32: 0x" );
+	Serial.println( Result.finalize( ), 16 );
 #endif
+
+	//Dump( 0, 64 );
 
 	while ( true ) {
 	}

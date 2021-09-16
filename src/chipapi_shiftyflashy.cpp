@@ -28,11 +28,13 @@ static const int Pin_Latch = PA0;
 static const int Pin_OE = PA1;
 static const int Pin_WE = PA2;
 
-static uint32_t LatchDelay = 1; // Actually should be ~20ns
+static uint32_t LatchDelay = 100; // Actually should be ~20ns
 
 struct ChipDescription* Chip = NULL;
 
 static uint16_t CurrentAddress = 0x0000;
+
+#define NSecsPerClock floor( 1.0 / ( double ) F_CPU )
 
 // These MUST be on 5v tolerant IOs!!!
 static const int DataBusPins[ 8 ] = {
@@ -60,7 +62,7 @@ static void ShiftyFlashy_SetChip( struct ChipDescription* ChipInfo ) {
 
 static bool ShiftyFlashy_Open( void ) {
     SPI_5V.begin( );
-    //SPI_5V.setClockDivider( 64 );
+    SPI_5V.setClockDivider( 16 );
 
     InitOutputWithLevel( Pin_Latch, LOW );
     InitOutputWithLevel( Pin_OE, HIGH );
@@ -93,9 +95,6 @@ static uint8_t ShiftyFlashy_Read( uint32_t Address ) {
 
     return Result;
 }
-
-// D7 1101 0111 *
-// 4F 0100 1111 O
 
 static uint8_t GetDataBus( void ) {
     uint8_t Result = 0;
@@ -161,8 +160,8 @@ static uint8_t ShiftyFlashy_Write( uint32_t Address, uint8_t Data ) {
 }
 
 static void InitOutputWithLevel( int Pin, int Level ) {
-    pinMode( Pin, OUTPUT );
     digitalWrite( Pin, Level );
+    pinMode( Pin, OUTPUT );
 }
 
 static void SetDataBus_Input( void ) {
@@ -183,19 +182,22 @@ static void SetDataBus_Output( void ) {
 
 static void PinChangeWithDelay( int Pin, int Level, uint32_t DelayUS ) {
     digitalWrite( Pin, Level );
-    delayMicroseconds( DelayUS );
+
+    if ( DelayUS ) {
+        delayMicroseconds( DelayUS );
+    }
 }
 
 static void SetAddress( uint16_t Address ) {
     // Don't unnecessarily shift out an address if it's already
     // in the shift registers.
     if ( CurrentAddress != Address ) {
-        SPI_5V.beginTransaction( SPISettings( Chip->Timing.ClockFreq, MSBFIRST, SPI_MODE0 ) );
+        //SPI_5V.beginTransaction( SPISettings( Chip->Timing.ClockFreq, MSBFIRST, SPI_MODE0 ) );
             SPI_5V.transfer( ( Address >> 8 ) & 0xFF );
             SPI_5V.transfer( Address & 0xFF );
-        SPI_5V.endTransaction( );
+        //SPI_5V.endTransaction( );
 
-        PinChangeWithDelay( Pin_Latch, HIGH, 0 );
+        PinChangeWithDelay( Pin_Latch, HIGH, LatchDelay );
         PinChangeWithDelay( Pin_Latch, LOW, LatchDelay );
     }
 
