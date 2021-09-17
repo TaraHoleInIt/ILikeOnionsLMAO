@@ -28,7 +28,7 @@ static const int Pin_Latch = PA0;
 static const int Pin_OE = PA1;
 static const int Pin_WE = PA2;
 
-static uint32_t LatchDelay = 1; // Actually should be ~20ns
+static uint32_t LatchDelay = 10; // Actually should be ~20ns
 
 struct ChipDescription* Chip = NULL;
 
@@ -72,7 +72,6 @@ static bool ShiftyFlashy_Open( void ) {
     InitOutputWithLevel( PB13, LOW );
 
     SetAddress( CurrentAddress );
-    SetDataBus_Input( );
 
     return true;
 }
@@ -85,7 +84,7 @@ static void ShiftyFlashy_Close( void ) {
 static uint8_t ShiftyFlashy_Read( uint32_t Address ) {
     uint8_t Result = 0;
 
-    noInterrupts( );
+    //noInterrupts( );
     SetDataBus_Input( );
 
     PinChangeWithDelay( Pin_OE, HIGH, Chip->Timing.OutputDisableTime );
@@ -94,13 +93,15 @@ static uint8_t ShiftyFlashy_Read( uint32_t Address ) {
 
     Result = GetDataBus( );
 
-    interrupts( );
+    //interrupts( );
 
     return Result;
 }
 
 static uint8_t GetDataBus( void ) {
     uint8_t Result = 0;
+
+    SetDataBus_Input( );
 
     Result |= ( digitalRead( DataBusPins[ 7 ] ) == HIGH ) ? 0x80 : 0x00;
     Result |= ( digitalRead( DataBusPins[ 6 ] ) == HIGH ) ? 0x40 : 0x00;
@@ -115,6 +116,9 @@ static uint8_t GetDataBus( void ) {
 }
 
 static void SetDataBus( const uint8_t Data ) {
+    SetDataBus( Data );
+    SetDataBus_Output( );
+
     digitalWrite( DataBusPins[ 7 ], ( Data & 0x80 ) ? HIGH : LOW );
     digitalWrite( DataBusPins[ 6 ], ( Data & 0x40 ) ? HIGH : LOW );
     digitalWrite( DataBusPins[ 5 ], ( Data & 0x20 ) ? HIGH : LOW );
@@ -136,15 +140,20 @@ static int ShiftyFlashy_Write( uint32_t Address, uint8_t Data ) {
     // Setup data and address lines
     SetAddress( ( uint16_t ) Address );
 
-    noInterrupts( );
-        SetDataBus_Output( );
+    //noInterrupts( );
         SetDataBus( Data );
+        SetDataBus_Output( );
 
         // Toggle write pulse
         PinChangeWithDelay( Pin_WE, LOW, Chip->Timing.WritePulseTime );
         PinChangeWithDelay( Pin_WE, HIGH, Chip->Timing.WriteCycleTime );
 
         SetDataBus_Input( );
+
+        Serial.print( "Writing 0x" );
+        Serial.print( Data, 16 );
+        Serial.print( " to address 0x" );
+        Serial.print( Address, 16 );
 
         do {
             PinChangeWithDelay( Pin_OE, LOW, Chip->Timing.OutputEnableTime );
@@ -155,9 +164,24 @@ static int ShiftyFlashy_Write( uint32_t Address, uint8_t Data ) {
                 Result = GetDataBus( );
             PinChangeWithDelay( Pin_OE, HIGH, Chip->Timing.OutputDisableTime );
 
-            delayMicroseconds( 1 );
-        } while ( Temp != Result != Data && Timeout-- );
-    interrupts( );
+            delay( 1 );
+
+            Serial.print( "[" );
+            Serial.print( Result, 16 );
+            Serial.print( "," );
+            Serial.print( Temp, 16 );
+            Serial.print( "," );
+            Serial.print( Data, 16 );
+            Serial.print( "]" );
+
+            if ( Temp == Result && Temp == Data && Data == Result )
+                break;
+        } while ( 1 );
+    //interrupts( );
+
+    Serial.println( );
+    Serial.print( "Result: 0x" );
+    Serial.println( Result, 16 );
 
     return ( Result != Temp ) ? INT32_MAX : Result;
 }
@@ -179,7 +203,7 @@ static void SetDataBus_Output( void ) {
     int i = 0;
 
     for ( i = 0; i < 8; i++ ) {
-        InitOutputWithLevel( DataBusPins[ i ], LOW );
+        pinMode( DataBusPins[ i ], OUTPUT );
     }
 }
 
@@ -191,13 +215,13 @@ static void PinChangeWithDelay( int Pin, int Level, uint32_t DelayUS ) {
 static void SetAddress( uint16_t Address ) {
     // Don't unnecessarily shift out an address if it's already
     // in the shift registers.
-    if ( CurrentAddress != Address ) {
+    //if ( CurrentAddress != Address ) {
         shiftOut( PB15, PB13, MSBFIRST, ( Address >> 8 ) & 0xFF );
         shiftOut( PB15, PB13, MSBFIRST, Address & 0xFF );
 
         PinChangeWithDelay( Pin_Latch, HIGH, LatchDelay );
-        PinChangeWithDelay( Pin_Latch, LOW, 0 );
-    }
+        PinChangeWithDelay( Pin_Latch, LOW, LatchDelay );
+    //}
 
     CurrentAddress = Address;
 }

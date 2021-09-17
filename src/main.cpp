@@ -19,9 +19,9 @@ struct ChipDescription ROM = {
 		.ClockFreq = 4000000,			// 4MHz (test)
 		.WriteCycleTime = 1000,			// 1ms
 		.WritePulseTime = 1,			// 1us/1000ns
-		.OutputEnableTime = 1,			// 1us/100ns
-		.OutputDisableTime = 1,			// 1us/60ns
-		.AddressToDataValidTime = 1		// 1us/250ns
+		.OutputEnableTime = 1000,			// 1us/100ns
+		.OutputDisableTime = 1000,			// 1us/60ns
+		.AddressToDataValidTime = 1000		// 1us/250ns
 	}
 };
 
@@ -105,6 +105,7 @@ void loop( void ) {
 	Programmer->SetChip( &ROM );
 
 #if 0
+#if 0
 	Erase( );
 	Write( __64kBASIC31A_bin, __64kBASIC31A_bin_len );
 #else
@@ -120,6 +121,20 @@ void loop( void ) {
 #endif
 
 	Dump( 0, 63 );
+#endif
+
+#if 1
+	for ( i = 0; i < 16; i++ ) {
+		Programmer->Write( i, i );
+	}
+
+	Serial.println( "Done" );
+#else
+	Dump( 0, 15 );
+	Dump( 0, 15 );
+	Dump( 0, 15 );
+	Dump( 0, 15 );
+#endif
 
 	while ( true ) {
 	}
