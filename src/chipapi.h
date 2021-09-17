@@ -29,7 +29,7 @@ struct ParallelChipAPI {
     void ( *SetChip ) ( struct ChipDescription* Chip );
 
     uint8_t ( *Read ) ( uint32_t Address );
-    uint8_t ( *Write ) ( uint32_t Address, uint8_t Value );
+    int ( *Write ) ( uint32_t Address, uint8_t Value );
 };
 
 extern struct ParallelChipAPI ShiftyFlashyAPI;

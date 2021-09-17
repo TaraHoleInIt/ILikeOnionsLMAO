@@ -10,7 +10,7 @@
 static bool ShiftyFlashy_Open( void );
 static void ShiftyFlashy_Close( void );
 static uint8_t ShiftyFlashy_Read( uint32_t Address );
-static uint8_t ShiftyFlashy_Write( uint32_t Address, uint8_t Data );
+static int ShiftyFlashy_Write( uint32_t Address, uint8_t Data );
 static void InitOutputWithLevel( int Pin, int Level );
 static void SetDataBus_Input( void );
 static void SetDataBus_Output( void );
@@ -28,7 +28,7 @@ static const int Pin_Latch = PA0;
 static const int Pin_OE = PA1;
 static const int Pin_WE = PA2;
 
-static uint32_t LatchDelay = 100; // Actually should be ~20ns
+static uint32_t LatchDelay = 1; // Actually should be ~20ns
 
 struct ChipDescription* Chip = NULL;
 
@@ -61,12 +61,15 @@ static void ShiftyFlashy_SetChip( struct ChipDescription* ChipInfo ) {
 }
 
 static bool ShiftyFlashy_Open( void ) {
-    SPI_5V.begin( );
-    SPI_5V.setClockDivider( 16 );
+    //SPI_5V.begin( );
+    //SPI_5V.setClockDivider( 16 );
 
     InitOutputWithLevel( Pin_Latch, LOW );
     InitOutputWithLevel( Pin_OE, HIGH );
     InitOutputWithLevel( Pin_WE, HIGH );
+
+    InitOutputWithLevel( PB15, LOW );
+    InitOutputWithLevel( PB13, LOW );
 
     SetAddress( CurrentAddress );
     SetDataBus_Input( );
@@ -75,7 +78,7 @@ static bool ShiftyFlashy_Open( void ) {
 }
 
 static void ShiftyFlashy_Close( void ) {
-    SPI_5V.end( );
+    //SPI_5V.end( );
     SetDataBus_Input( );
 }
 
@@ -89,9 +92,9 @@ static uint8_t ShiftyFlashy_Read( uint32_t Address ) {
         SetAddress( ( uint16_t ) Address );
     PinChangeWithDelay( Pin_OE, LOW, Chip->Timing.OutputEnableTime );
 
-    interrupts( );
-
     Result = GetDataBus( );
+
+    interrupts( );
 
     return Result;
 }
@@ -122,7 +125,7 @@ static void SetDataBus( const uint8_t Data ) {
     digitalWrite( DataBusPins[ 0 ], ( Data & 0x01 ) ? HIGH : LOW );
 }
 
-static uint8_t ShiftyFlashy_Write( uint32_t Address, uint8_t Data ) {
+static int ShiftyFlashy_Write( uint32_t Address, uint8_t Data ) {
     int Timeout = 100;
     uint8_t Result = 0;
     uint8_t Temp = 0;
@@ -156,7 +159,7 @@ static uint8_t ShiftyFlashy_Write( uint32_t Address, uint8_t Data ) {
         } while ( Temp != Result != Data && Timeout-- );
     interrupts( );
 
-    return Result;
+    return ( Result != Temp ) ? INT32_MAX : Result;
 }
 
 static void InitOutputWithLevel( int Pin, int Level ) {
@@ -182,23 +185,18 @@ static void SetDataBus_Output( void ) {
 
 static void PinChangeWithDelay( int Pin, int Level, uint32_t DelayUS ) {
     digitalWrite( Pin, Level );
-
-    if ( DelayUS ) {
-        delayMicroseconds( DelayUS );
-    }
+    delayMicroseconds( DelayUS );
 }
 
 static void SetAddress( uint16_t Address ) {
     // Don't unnecessarily shift out an address if it's already
     // in the shift registers.
     if ( CurrentAddress != Address ) {
-        //SPI_5V.beginTransaction( SPISettings( Chip->Timing.ClockFreq, MSBFIRST, SPI_MODE0 ) );
-            SPI_5V.transfer( ( Address >> 8 ) & 0xFF );
-            SPI_5V.transfer( Address & 0xFF );
-        //SPI_5V.endTransaction( );
+        shiftOut( PB15, PB13, MSBFIRST, ( Address >> 8 ) & 0xFF );
+        shiftOut( PB15, PB13, MSBFIRST, Address & 0xFF );
 
         PinChangeWithDelay( Pin_Latch, HIGH, LatchDelay );
-        PinChangeWithDelay( Pin_Latch, LOW, LatchDelay );
+        PinChangeWithDelay( Pin_Latch, LOW, 0 );
     }
 
     CurrentAddress = Address;

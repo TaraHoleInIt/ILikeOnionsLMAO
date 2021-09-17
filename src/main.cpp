@@ -19,9 +19,9 @@ struct ChipDescription ROM = {
 		.ClockFreq = 4000000,			// 4MHz (test)
 		.WriteCycleTime = 1000,			// 1ms
 		.WritePulseTime = 1,			// 1us/1000ns
-		.OutputEnableTime = 1000,			// 1us/100ns
-		.OutputDisableTime = 1000,			// 1us/60ns
-		.AddressToDataValidTime = 1000,	// 1us/250ns
+		.OutputEnableTime = 1,			// 1us/100ns
+		.OutputDisableTime = 1,			// 1us/60ns
+		.AddressToDataValidTime = 1		// 1us/250ns
 	}
 };
 
@@ -119,7 +119,7 @@ void loop( void ) {
 	Serial.println( Result.finalize( ), 16 );
 #endif
 
-	//Dump( 0, 64 );
+	Dump( 0, 63 );
 
 	while ( true ) {
 	}
