@@ -4,7 +4,7 @@
 #include "rom.h"
 
 void setup( void ) {
-	Serial.begin( 115200 );
+	Serial.begin( 9600 );
 
 	while ( ! Serial )
 	;
@@ -19,9 +19,9 @@ struct ChipDescription ROM = {
 		.ClockFreq = 4000000,			// 4MHz (test)
 		.WriteCycleTime = 1000,			// 1ms
 		.WritePulseTime = 1,			// 1us/1000ns
-		.OutputEnableTime = 1000,			// 1us/100ns
-		.OutputDisableTime = 1000,			// 1us/60ns
-		.AddressToDataValidTime = 1000		// 1us/250ns
+		.OutputEnableTime = 1,			// 1us/100ns
+		.OutputDisableTime = 1,			// 1us/60ns
+		.AddressToDataValidTime = 1		// 1us/250ns
 	}
 };
 
@@ -90,7 +90,7 @@ void Dump( uint32_t Start, uint32_t End ) {
 			Serial.print( Buffer );
 		}
 
-		snprintf( Buffer, sizeof( Buffer ), "%02X ", Programmer->Read( Start ) );
+		snprintf( Buffer, sizeof( Buffer ), "%02X ", ( unsigned char ) Programmer->Read( Start ) );
 		Serial.print( Buffer );
 	}
 
@@ -123,18 +123,17 @@ void loop( void ) {
 	Dump( 0, 63 );
 #endif
 
-#if 1
+	delay( 5000 );
+
+	Serial.println( "Here" );
+
 	for ( i = 0; i < 16; i++ ) {
-		Programmer->Write( i, i );
+		//Programmer->Write( i, i );
 	}
 
 	Serial.println( "Done" );
-#else
+
 	Dump( 0, 15 );
-	Dump( 0, 15 );
-	Dump( 0, 15 );
-	Dump( 0, 15 );
-#endif
 
 	while ( true ) {
 	}

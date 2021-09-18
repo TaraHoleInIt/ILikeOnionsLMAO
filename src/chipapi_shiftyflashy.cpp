@@ -20,6 +20,7 @@ static void ShiftyFlashy_SetChip( struct ChipDescription* ChipInfo );
 static uint8_t GetDataBus( void );
 static void SetDataBus( const uint8_t Data );
 
+#if 0
 static SPIClass SPI_5V( PB15, PB14, PB13 );
 
 // 3.3V Logic pins should still register as logic HIGH
@@ -27,15 +28,21 @@ static SPIClass SPI_5V( PB15, PB14, PB13 );
 static const int Pin_Latch = PA0;
 static const int Pin_OE = PA1;
 static const int Pin_WE = PA2;
+#endif
 
-static uint32_t LatchDelay = 10; // Actually should be ~20ns
+static const int Pin_Clock = PIND2;
+static const int Pin_Data = PIND3;
+static const int Pin_Latch = PIND4;
+static const int Pin_OE = PIND5;
+static const int Pin_WE = PIND6;
+
+static int LatchDelay = 1; // Actually should be ~20ns
 
 struct ChipDescription* Chip = NULL;
 
 static uint16_t CurrentAddress = 0x0000;
 
-#define NSecsPerClock floor( 1.0 / ( double ) F_CPU )
-
+#if 0
 // These MUST be on 5v tolerant IOs!!!
 static const int DataBusPins[ 8 ] = {
     PA8,    // D0
@@ -47,6 +54,18 @@ static const int DataBusPins[ 8 ] = {
     PB6,    // D6
     PB7     // D7
 };
+#else
+static const int DataBusPins[ 8 ] = {
+    PIN_A0,    // D0
+    PIN_A1,    // D1
+    PIN_A2,   // D2
+    PIN_A3,   // D3
+    PIN_A4,    // D4
+    PIN_A5,    // D5
+    PIN_A6,    // D6
+    PIN_A7     // D7
+};
+#endif
 
 struct ParallelChipAPI ShiftyFlashyAPI = {
     ShiftyFlashy_Open,
@@ -68,8 +87,8 @@ static bool ShiftyFlashy_Open( void ) {
     InitOutputWithLevel( Pin_OE, HIGH );
     InitOutputWithLevel( Pin_WE, HIGH );
 
-    InitOutputWithLevel( PB15, LOW );
-    InitOutputWithLevel( PB13, LOW );
+    InitOutputWithLevel( Pin_Clock, LOW );
+    InitOutputWithLevel( Pin_Data, LOW );
 
     SetAddress( CurrentAddress );
 
@@ -116,9 +135,6 @@ static uint8_t GetDataBus( void ) {
 }
 
 static void SetDataBus( const uint8_t Data ) {
-    SetDataBus( Data );
-    SetDataBus_Output( );
-
     digitalWrite( DataBusPins[ 7 ], ( Data & 0x80 ) ? HIGH : LOW );
     digitalWrite( DataBusPins[ 6 ], ( Data & 0x40 ) ? HIGH : LOW );
     digitalWrite( DataBusPins[ 5 ], ( Data & 0x20 ) ? HIGH : LOW );
@@ -127,6 +143,8 @@ static void SetDataBus( const uint8_t Data ) {
     digitalWrite( DataBusPins[ 2 ], ( Data & 0x04 ) ? HIGH : LOW );
     digitalWrite( DataBusPins[ 1 ], ( Data & 0x02 ) ? HIGH : LOW );
     digitalWrite( DataBusPins[ 0 ], ( Data & 0x01 ) ? HIGH : LOW );
+
+    SetDataBus_Output( );
 }
 
 static int ShiftyFlashy_Write( uint32_t Address, uint8_t Data ) {
@@ -174,7 +192,7 @@ static int ShiftyFlashy_Write( uint32_t Address, uint8_t Data ) {
             Serial.print( Data, 16 );
             Serial.print( "]" );
 
-            if ( Temp == Result && Temp == Data && Data == Result )
+            if ( Temp == Result && Temp == Data )
                 break;
         } while ( 1 );
     //interrupts( );
@@ -216,8 +234,8 @@ static void SetAddress( uint16_t Address ) {
     // Don't unnecessarily shift out an address if it's already
     // in the shift registers.
     //if ( CurrentAddress != Address ) {
-        shiftOut( PB15, PB13, MSBFIRST, ( Address >> 8 ) & 0xFF );
-        shiftOut( PB15, PB13, MSBFIRST, Address & 0xFF );
+        shiftOut( Pin_Data , Pin_Clock, MSBFIRST, ( Address >> 8 ) & 0xFF );
+        shiftOut( Pin_Data, Pin_Clock, MSBFIRST, Address & 0xFF );
 
         PinChangeWithDelay( Pin_Latch, HIGH, LatchDelay );
         PinChangeWithDelay( Pin_Latch, LOW, LatchDelay );
